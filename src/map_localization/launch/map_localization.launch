@@ -1,0 +1,37 @@
+<launch>
+
+  <arg name="map_path" default="$(find fast_lio_msf)/PCD/scans.pcd"/>
+  <arg name="origin_file" default="$(find fast_lio_msf)/PCD/map_origin.yaml"/>
+
+  <node pkg="map_localization" type="mapLocalization" name="mapLocalization" output="screen">
+    <!-- 建图阶段保存的 ENU 原点（origin_latitude / origin_longitude / origin_altitude） -->
+    <rosparam command="load" file="$(arg origin_file)"/>
+
+    <param name="map_path" type="string" value="$(arg map_path)"/>
+    <param name="prior_map_frame" type="string" value="prior_map"/>
+    <param name="odom_frame" type="string" value="map"/>
+
+    <param name="scan_voxel_size" type="double" value="0.2"/>
+    <param name="map_voxel_size" type="double" value="0.4"/>
+    <param name="accum_duration" type="double" value="3.0"/>
+    <param name="match_period" type="double" value="1.0"/>
+
+    <param name="init_corr_dist" type="double" value="5.0"/>
+    <param name="track_corr_dist" type="double" value="2.0"/>
+    <param name="init_fitness_max" type="double" value="1.0"/>
+    <param name="track_fitness_max" type="double" value="0.3"/>
+    <param name="min_match_points" type="int" value="100"/>
+
+    <param name="rtk_std_max" type="double" value="0.3"/>
+    <param name="rtk_timeout" type="double" value="2.0"/>
+    <param name="min_travel" type="double" value="3.0"/>
+    <!-- RTK 天线相对机体（身体雷达 IMU）的位置，与 fast_lio yaml 中 extrinT_Gnss2IMU 一致 -->
+    <rosparam param="antenna_offset">[0.0, 0.0, 0.15]</rosparam>
+  </node>
+
+  <node pkg="map_localization" type="waypointTransform" name="waypointTransform" output="screen">
+    <param name="prior_map_frame" type="string" value="prior_map"/>
+    <param name="odom_frame" type="string" value="map"/>
+  </node>
+
+</launch>

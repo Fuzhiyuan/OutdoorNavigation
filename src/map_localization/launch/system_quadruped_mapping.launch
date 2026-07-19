@@ -1,0 +1,20 @@
+<launch>
+<!-- 建图日：双 MID360 + bynav RTK，GNSS 紧耦合建 ENU 对齐地图。
+     遥控狗走完场地后 Ctrl-C，fast_lio_msf 保存 PCD/scans.pcd 与 PCD/map_origin.yaml -->
+
+  <arg name="rviz" default="true"/>
+  <arg name="bynav_ip" default="192.168.1.151"/>
+  <arg name="bynav_port" default="1111"/>
+
+  <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360_dual.launch"/>
+
+  <include file="$(find bynav_ros_driver)/launch/connect_net.launch">
+    <arg name="oem7_ip_addr" value="$(arg bynav_ip)"/>
+    <arg name="oem7_port" value="$(arg bynav_port)"/>
+  </include>
+
+  <include file="$(find fast_lio_msf)/launch/mapping_mid360_build_map.launch">
+    <arg name="rviz" value="$(arg rviz)"/>
+  </include>
+
+</launch>

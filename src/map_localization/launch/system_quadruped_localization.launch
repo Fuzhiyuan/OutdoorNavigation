@@ -1,0 +1,70 @@
+<launch>
+<!-- 日常作业：双 MID360 + bynav RTK + FAST-LIO 里程计 + 先验地图 GICP 定位 + CMU 局部规划。
+     全局目标发到 /way_point_prior（prior_map 系，即建图时的 ENU 系），
+     waypointTransform 会持续把它转换到 odom 系（"map"）喂给 local_planner。
+     pathFollower 输出 /cmd_vel，由四足底层运动控制订阅执行。 -->
+
+  <arg name="rviz" default="true"/>
+  <arg name="bynav_ip" default="192.168.1.151"/>
+  <arg name="bynav_port" default="1111"/>
+  <arg name="map_path" default="$(find fast_lio_msf)/PCD/scans.pcd"/>
+  <arg name="origin_file" default="$(find fast_lio_msf)/PCD/map_origin.yaml"/>
+  <arg name="checkTerrainConn" default="false"/>
+
+  <!-- 四足参数：前进速度不超过 1 m/s，机体高约 0.5 m -->
+  <arg name="maxSpeed" default="0.8"/>
+  <arg name="autonomySpeed" default="0.8"/>
+  <arg name="vehicleLength" default="0.7"/>
+  <arg name="vehicleWidth" default="0.4"/>
+  <arg name="vehicleHeight" default="0.5"/>
+  <arg name="minRelZ" default="-1.0"/>
+  <arg name="maxRelZ" default="0.5"/>
+
+  <!-- 传感器驱动 -->
+  <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360_dual.launch"/>
+
+  <include file="$(find bynav_ros_driver)/launch/connect_net.launch">
+    <arg name="oem7_ip_addr" value="$(arg bynav_ip)"/>
+    <arg name="oem7_port" value="$(arg bynav_port)"/>
+  </include>
+
+  <!-- 里程计：双雷达 FAST-LIO（定位模式，GNSS 关闭） -->
+  <include file="$(find fast_lio_msf)/launch/mapping_mid360.launch">
+    <arg name="rviz" value="false"/>
+  </include>
+
+  <!-- 先验地图定位 + 全局航点转换 -->
+  <include file="$(find map_localization)/launch/map_localization.launch">
+    <arg name="map_path" value="$(arg map_path)"/>
+    <arg name="origin_file" value="$(arg origin_file)"/>
+  </include>
+
+  <!-- CMU 局部自主栈（odom 系内工作，感知不到全局修正跳变） -->
+  <include file="$(find loam_interface)/launch/loam_interface.launch"/>
+
+  <include file="$(find sensor_scan_generation)/launch/sensor_scan_generation.launch"/>
+
+  <include file="$(find terrain_analysis)/launch/terrain_analysis.launch">
+    <arg name="vehicleHeight" value="$(arg vehicleHeight)"/>
+    <arg name="minRelZ" value="$(arg minRelZ)"/>
+    <arg name="maxRelZ" value="$(arg maxRelZ)"/>
+  </include>
+
+  <include file="$(find terrain_analysis_ext)/launch/terrain_analysis_ext.launch">
+    <arg name="checkTerrainConn" value="$(arg checkTerrainConn)"/>
+  </include>
+
+  <include file="$(find local_planner)/launch/local_planner.launch">
+    <arg name="maxSpeed" value="$(arg maxSpeed)"/>
+    <arg name="autonomySpeed" value="$(arg autonomySpeed)"/>
+    <arg name="autonomyMode" value="true"/>
+    <arg name="vehicleLength" value="$(arg vehicleLength)"/>
+    <arg name="vehicleWidth" value="$(arg vehicleWidth)"/>
+  </include>
+
+  <group if="$(arg rviz)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rvizGA"
+          args="-d $(find vehicle_simulator)/rviz/vehicle_simulator.rviz" respawn="true"/>
+  </group>
+
+</launch>

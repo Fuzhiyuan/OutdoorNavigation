@@ -1,0 +1,61 @@
+common:
+    # 四足机器人双 MID360，由 livox_ros_driver2 以 multi_topic=1 发布（话题名后缀 = 雷达 IP）
+    # left  = 身体水平雷达（z 朝天，有效视角约 ±135°），滤波器使用它的内置 IMU
+    # right = 狗头雷达（z 轴朝前进方向，x 轴朝地面）
+    # 按你实际雷达 IP 修改下面三个话题名
+    lid_topic_left:  "/livox/lidar_192_168_1_12"
+    lid_topic_right: "/livox/lidar_192_168_1_3"
+    imu_topic:  "/livox/imu_192_168_1_12"
+    dual_lidar_en: true
+    use_wheel: false
+    use_gnss: false                # 定位模式：全局位姿由 map_localization 的地图匹配提供
+    gnss_topic:  "/gps/fix"        # bynav_ros_driver 的 NavSatFix 话题（仅 use_gnss: true 时使用）
+    time_sync_en: false            # 两台雷达需通过 gPTP 与主机硬同步，不要依赖软同步
+    time_offset_lidar_to_imu: 0.0
+
+preprocess:
+    lidar_type: 1                  # 1 = Livox 系列（CustomMsg）
+    scan_line: 4                   # MID360 为 4 线
+    blind: 0.4                     # 两台雷达共用：需盖住狗头/摆腿的自遮挡半径，又不能滤掉狗头雷达脚下的近处地面
+
+mapping:
+    acc_cov: 0.1
+    gyr_cov: 0.1
+    b_acc_cov: 0.0001
+    b_gyr_cov: 0.0001
+    fov_degree: 360
+    det_range: 100.0
+    extrinsic_est_en: false
+    # 双雷达模式下点云已在回调里通过 left/right_lidar_to_imu 转到 IMU 系，这里保持单位阵
+    extrinsic_T: [ 0.0, 0.0, 0.0 ]
+    extrinsic_R: [ 1, 0, 0,
+                   0, 1, 0,
+                   0, 0, 1 ]
+
+    # 身体雷达 -> 身体雷达内置 IMU（Livox 官方 MID360 外参，一般不用改）
+    left_lidar_to_imu: [ 1, 0, 0, -0.011,
+                         0, 1, 0, -0.02329,
+                         0, 0, 1,  0.04412,
+                         0, 0, 0,  1 ]
+
+    # 狗头雷达 -> 身体雷达内置 IMU
+    # 旋转 = 绕 y 轴 +90°（狗头雷达 z 朝前、x 朝地，机体系 x 朝前、z 朝天）
+    # 平移为占位值：请实测狗头雷达光心相对身体雷达 IMU 的位置（前 x / 左 y / 上 z，单位 m）
+    right_lidar_to_imu: [  0, 0, 1, 0.30,
+                           0, 1, 0, 0.00,
+                          -1, 0, 0, 0.10,
+                           0, 0, 0, 1 ]
+
+    # RTK 天线相对身体雷达 IMU 的杆臂（仅 use_gnss: true 时使用），请实测
+    extrinT_Gnss2IMU: [ 0.0, 0.0, 0.15 ]
+    extrinsic_leverarm_en: true
+
+publish:
+    path_en: true
+    scan_publish_en: true
+    dense_publish_en: true
+    scan_bodyframe_pub_en: false
+
+pcd_save:
+    pcd_save_en: false
+    interval: -1

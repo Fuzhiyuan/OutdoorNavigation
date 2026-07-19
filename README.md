@@ -10,34 +10,35 @@
 
 ```mermaid
 flowchart LR
-    subgraph 感知
-        L1[MID360 · 身体水平雷达]
-        L2[MID360 · 云台/狗头雷达]
-        R[bynav RTK\nINSPVAX / NavSatFix]
+    subgraph S1["感知"]
+        L1["MID360 - 身体水平雷达"]
+        L2["MID360 - 云台/狗头雷达"]
+        R["bynav RTK<br/>INSPVAX / NavSatFix"]
     end
 
-    subgraph 里程计
-        F[fast_lio_msf\n双雷达+IMU 紧耦合]
+    subgraph S2["里程计"]
+        F["fast_lio_msf<br/>双雷达+IMU 紧耦合"]
     end
 
-    subgraph 全局定位
-        M[mapLocalization\nGICP 匹配先验 PCD 地图]
-        W[waypointTransform\n航点坐标转换]
+    subgraph S3["全局定位"]
+        M["mapLocalization<br/>GICP 匹配先验 PCD 地图"]
+        W["waypointTransform<br/>航点坐标转换"]
     end
 
-    subgraph CMU 局部栈（odom 系）
-        LI[loam_interface]
-        TA[terrain_analysis /\nterrain_analysis_ext]
-        LP[local_planner]
-        TP[tare_planner\n自主探索]
+    subgraph S4["CMU 局部栈 (odom 系)"]
+        LI["loam_interface"]
+        TA["terrain_analysis / terrain_analysis_ext"]
+        LP["local_planner"]
+        TP["tare_planner<br/>自主探索"]
     end
 
-    L1 & L2 --> F
-    R -.初始位姿/退化兜底.-> M
-    F -- /Odometry, /cloud_registered --> M
-    F -- /Odometry, /cloud_registered --> LI
-    M -- TF: prior_map→map, ~1Hz --> W
-    W -- /way_point (odom系) --> LP
+    L1 --> F
+    L2 --> F
+    R -. "初始位姿 / 退化兜底" .-> M
+    F -- "/Odometry, /cloud_registered" --> M
+    F -- "/Odometry, /cloud_registered" --> LI
+    M -- "TF: prior_map to map, ~1Hz" --> W
+    W -- "/way_point (odom系)" --> LP
     LI --> TA --> LP
     TA --> TP --> LP
 ```

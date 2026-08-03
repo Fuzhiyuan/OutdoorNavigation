@@ -281,7 +281,7 @@ int main(int argc, char **argv) {
                 terrainVoxelCloud[terrainVoxelWidth * (indX + 1) + indY];
           }
           terrainVoxelCloud[terrainVoxelWidth * (terrainVoxelWidth - 1) +
-                            indY] = terrainVoxelCloudPtr;
+                            indY] = terrainVoxelCloudPtr;//地址复用，只清除数据
           terrainVoxelCloud[terrainVoxelWidth * (terrainVoxelWidth - 1) + indY]
               ->clear();
         }
@@ -433,7 +433,7 @@ int main(int argc, char **argv) {
             float pointZ1 = point.z - vehicleZ;
 
             float dis1 = sqrt(pointX1 * pointX1 + pointY1 * pointY1);
-            if (dis1 > minDyObsDis) {
+            if (dis1 > minDyObsDis) {//minDyObsDis default value is 0.3m，minDyObsRelZ default value is -0.5m，minDyObsAngle default value is 0，absDyObsRelZThre default value is 0.2
               float angle1 = atan2(pointZ1 - minDyObsRelZ, dis1) * 180.0 / PI;
               if (angle1 > minDyObsAngle) {
                 float pointX2 =

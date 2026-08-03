@@ -60,7 +60,9 @@ void WaypointTool::onPoseSet(double x, double y, double theta)
   pub_joy_.publish(joy);
 
   geometry_msgs::PointStamped waypoint;
-  waypoint.header.frame_id = "map";
+  // PoseTool hands us coordinates in RViz's fixed frame, so report that frame
+  // honestly and let localPlanner pull the goal into its own odom frame
+  waypoint.header.frame_id = context_->getFixedFrame().toStdString();
   waypoint.header.stamp = joy.header.stamp;
   waypoint.point.x = x;
   waypoint.point.y = y;

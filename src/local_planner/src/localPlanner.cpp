@@ -20,6 +20,9 @@
 
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
@@ -34,6 +37,7 @@ const double PI = 3.1415926;
 #define PLOTPATHSET 1
 
 string pathFolder;
+string odomFrame = "odom";
 double vehicleLength = 0.6;
 double vehicleWidth = 0.6;
 double sensorOffsetX = 0;
@@ -115,6 +119,8 @@ std::vector<int> correspondences[gridVoxelNum];
 
 bool newLaserCloud = false;
 bool newTerrainCloud = false;
+
+tf2_ros::Buffer *tfBufferPointer = NULL;
 
 double odomTime = 0;
 double joyTime = 0;
@@ -237,8 +243,27 @@ void joystickHandler(const sensor_msgs::Joy::ConstPtr& joy)
 
 void goalHandler(const geometry_msgs::PointStamped::ConstPtr& goal)
 {
-  goalX = goal->point.x;
-  goalY = goal->point.y;
+  // goals arriving in odomFrame (or with no frame set, as legacy publishers do)
+  // are used as-is; anything else is pulled into odomFrame first, which is what
+  // strips the map->odom drift correction out of a global goal
+  if (goal->header.frame_id.empty() || goal->header.frame_id == odomFrame) {
+    goalX = goal->point.x;
+    goalY = goal->point.y;
+    return;
+  }
+
+  geometry_msgs::PointStamped goalIn = *goal, goalOut;
+  goalIn.header.stamp = ros::Time(0);
+  try {
+    tfBufferPointer->transform(goalIn, goalOut, odomFrame, ros::Duration(0.1));
+  } catch (tf2::TransformException& ex) {
+    ROS_WARN_THROTTLE(2.0, "localPlanner: cannot transform goal from '%s' to '%s': %s",
+                      goal->header.frame_id.c_str(), odomFrame.c_str(), ex.what());
+    return;
+  }
+
+  goalX = goalOut.point.x;
+  goalY = goalOut.point.y;
 }
 
 void speedHandler(const std_msgs::Float32::ConstPtr& speed)
@@ -497,6 +522,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nhPrivate = ros::NodeHandle("~");
 
   nhPrivate.getParam("pathFolder", pathFolder);
+  nhPrivate.getParam("odomFrame", odomFrame);
   nhPrivate.getParam("vehicleLength", vehicleLength);
   nhPrivate.getParam("vehicleWidth", vehicleWidth);
   nhPrivate.getParam("sensorOffsetX", sensorOffsetX);
@@ -535,6 +561,10 @@ int main(int argc, char** argv)
   nhPrivate.getParam("goalClearRange", goalClearRange);
   nhPrivate.getParam("goalX", goalX);
   nhPrivate.getParam("goalY", goalY);
+
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tfListener(tfBuffer);
+  tfBufferPointer = &tfBuffer;
 
   ros::Subscriber subOdometry = nh.subscribe<nav_msgs::Odometry>
                                 ("/state_estimation", 5, odometryHandler);
